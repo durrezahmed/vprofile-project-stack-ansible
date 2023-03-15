@@ -1,0 +1,39 @@
+---
+- name: Generate Artifact, Copy Artifact and SQL ile to files directory
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+    - name: Install  jdk, maven, git
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - git
+        - openjdk-8-jdk
+        - maven
+
+    - name: Clone source code from GitHub
+      ansible.builtin.git:
+        repo: 'https://github.com/durrezahmed/vprofile-project-devops.git'
+        dest: ./vprofile-repo
+      register: git_status
+
+    - name: mvn install command to build artifact
+      ansible.builtin.command: "mvn install"
+      args:
+        chdir: vprofile-repo
+      when: git_status.changed
+      register: mvn_info
+
+    - name: Copy artifacts to files directory
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: files/ROOT.war
+      with_fileglob: vprofile-repo/target/*.war
+
+    - name: Copy SQL file to files directory
+      ansible.builtin.copy:
+        src: vprofile-repo/src/main/resources/db_backup.sql
+        dest: files/db_backup.sql
